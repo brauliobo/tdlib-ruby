@@ -35,6 +35,10 @@ class TD::UpdateManager
       match_handlers!(update, extra).each { |h| h.async.run(update) }
     end
   rescue StandardError => e
+    msg = e.message.to_s
+    return if msg.include?("Can't find class for") ||
+              msg.include?("uninitialized constant TD::Types::Update") ||
+              msg.include?("is missing in Hash input")
     warn("Uncaught exception in update manager: #{e.message}")
   end
 
