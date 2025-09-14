@@ -174,6 +174,7 @@ module TD
       result = client.edit_message_text(
         chat_id: chat_id,
         message_id: message_id,
+        reply_markup: nil,
         input_message_content: TD::Types::InputMessageContent::Text.new(
           text: formatted_text,
           link_preview_options: nil,
