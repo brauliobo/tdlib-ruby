@@ -172,24 +172,10 @@ module TD
     def parse_markdown_text(text, parse_mode = 'MarkdownV2')
       return TD::Types::FormattedText.new(text: '', entities: []) if text.to_s.empty?
       
-      # Use TDBot::Markdown if available, otherwise fallback to TDLib's parser
-      if defined?(TDBot::Markdown)
-        result = TDBot::Markdown.parse(client, text.to_s)
-        dlog "[MARKDOWN_PARSE] '#{text[0,30]}...' -> #{result.entities.length} entities"
-        result
-      else
-        # Fallback to TDLib's built-in parser
-        parse_mode_obj = case parse_mode.to_s.downcase
-        when 'markdownv2', 'markdown'
-          TD::Types::TextParseMode::Markdown.new(version: 2)
-        when 'html'
-          TD::Types::TextParseMode::HTML.new
-        else
-          TD::Types::TextParseMode::Markdown.new(version: 2)
-        end
-        
-        client.parse_text_entities(text: text.to_s, parse_mode: parse_mode_obj).value(5)
-      end
+      # Use TD::Markdown parser
+      result = TD::Markdown.parse(client, text.to_s)
+      dlog "[MARKDOWN_PARSE] '#{text[0,30]}...' -> #{result.entities.length} entities"
+      result
     rescue => e
       dlog "[PARSE_MARKDOWN_ERROR] #{e.class}: #{e.message}"
       # Fallback to plain text
