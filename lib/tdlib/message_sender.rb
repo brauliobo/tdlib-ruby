@@ -220,12 +220,24 @@ module TD
     end
     
     # Send audio message
-    def send_audio(chat_id, caption, audio:, duration: 0, performer: nil, title: nil, reply_to: nil, **extra_params)
+    def send_audio(chat_id, caption, audio:, duration: 0, performer: nil, title: nil, thumb: nil, reply_to: nil, **extra_params)
       safe_path = extract_local_path(audio) || audio
+      
+      # Handle thumbnail if provided
+      thumbnail = if thumb
+        thumb_path = extract_local_path(thumb) || thumb
+        TD::Types::InputThumbnail.new(
+          thumbnail: TD::Types::InputFile::Local.new(path: thumb_path),
+          width: 0,  # Use 0 if unknown, as per TDLib docs
+          height: 0
+        )
+      else
+        nil
+      end
       
       content = TD::Types::InputMessageContent::Audio.new(
         audio: TD::Types::InputFile::Local.new(path: safe_path),
-        album_cover_thumbnail: nil,
+        album_cover_thumbnail: thumbnail,
         duration: duration,
         title: title || File.basename(safe_path, '.*'),
         performer: performer || '',
@@ -235,7 +247,7 @@ module TD
       # Build reply_to structure if message_id provided
       reply_to_param = reply_to ? TD::Types::InputMessageReplyTo::Message.new(message_id: reply_to) : nil
       
-      dlog "[TD_SEND_AUDIO] chat=#{chat_id} path=#{safe_path} reply_to=#{reply_to}"
+      dlog "[TD_SEND_AUDIO] chat=#{chat_id} path=#{safe_path} thumb=#{thumb_path if thumb} reply_to=#{reply_to}"
       
       sent = client.send_message(
         chat_id: chat_id,

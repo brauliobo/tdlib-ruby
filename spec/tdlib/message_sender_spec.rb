@@ -252,6 +252,32 @@ RSpec.describe TD::MessageSender do
         expect(content.performer).to eq('Artist Name')
       end
     end
+
+    it 'sends audio with thumbnail' do
+      thumb_path = '/path/to/thumb.jpg'
+      
+      result = message_sender.send_audio(chat_id, caption, audio: audio_path, thumb: thumb_path)
+      
+      expect(result).to eq({message_id: 0, text: "Audio caption"})
+      expect(mock_client).to have_received(:send_message) do |args|
+        content = args[:input_message_content]
+        expect(content).to be_a(TD::Types::InputMessageContent::Audio)
+        expect(content.album_cover_thumbnail).to be_a(TD::Types::InputThumbnail)
+        expect(content.album_cover_thumbnail.thumbnail).to be_a(TD::Types::InputFile::Local)
+        expect(content.album_cover_thumbnail.thumbnail.path).to eq(thumb_path)
+      end
+    end
+
+    it 'sends audio without thumbnail when not provided' do
+      result = message_sender.send_audio(chat_id, caption, audio: audio_path)
+      
+      expect(result).to eq({message_id: 0, text: "Audio caption"})
+      expect(mock_client).to have_received(:send_message) do |args|
+        content = args[:input_message_content]
+        expect(content).to be_a(TD::Types::InputMessageContent::Audio)
+        expect(content.album_cover_thumbnail).to be_nil
+      end
+    end
   end
 
   describe '#extract_local_path' do
