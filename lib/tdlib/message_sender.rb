@@ -48,20 +48,26 @@ module TD
       { message_id: 0, text: text }
     end
     
-    def send_video(chat_id, caption, video:, duration: 0, width: 0, height: 0, supports_streaming: false)
+    def send_video(chat_id, caption, video:, duration: 0, width: 0, height: 0, supports_streaming: false, **extra_params)
       path = file_manager.extract_local_path(video)
       raise 'video path missing' unless path && !path.empty?
       
       # Copy file to safe location to prevent cleanup issues
       safe_path = file_manager.copy_to_safe_location(path)
       
+      # Extract relevant parameters, ignoring Bot API specific ones like star_count, thumb, title, performer
+      duration = (extra_params[:duration] || duration).to_i
+      width = (extra_params[:width] || width).to_i  
+      height = (extra_params[:height] || height).to_i
+      supports_streaming = extra_params.key?(:supports_streaming) ? extra_params[:supports_streaming] : supports_streaming
+      
       content = TD::Types::InputMessageContent::Video.new(
         video: TD::Types::InputFile::Local.new(path: safe_path),
         thumbnail: file_manager.create_dummy_thumbnail,
         added_sticker_file_ids: [],
-        duration: duration.to_i,
-        width: width.to_i,
-        height: height.to_i,
+        duration: duration,
+        width: width,
+        height: height,
         supports_streaming: supports_streaming,
         caption: parse_markdown_text(caption.to_s),
         show_caption_above_media: false,
@@ -86,7 +92,7 @@ module TD
       { message_id: 0, text: caption }
     end
     
-    def send_document(chat_id, caption, document:)
+    def send_document(chat_id, caption, document:, **extra_params)
       path = file_manager.extract_local_path(document)
       raise 'document path missing' unless path && !path.empty?
       

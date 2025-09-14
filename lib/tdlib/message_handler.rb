@@ -79,9 +79,8 @@ module TD
       when TD::Types::MessageContent::Document then msg[:document] = orig_msg.content.document
       end
       
-      # Using OpenStruct as SymMash might not be available
-      require 'ostruct'
-      OpenStruct.new(msg)
+      # Use SymMash for compatibility with Bot class expectations
+      SymMash.new(msg)
     end
     
     def mark_as_read(message)
