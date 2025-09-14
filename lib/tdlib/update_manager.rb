@@ -38,7 +38,8 @@ class TD::UpdateManager
     msg = e.message.to_s
     return if msg.include?("Can't find class for") ||
               msg.include?("uninitialized constant TD::Types::Update") ||
-              msg.include?("is missing in Hash input")
+              msg.include?("is missing in Hash input") ||
+              msg.include?("Dry::Types::Constrained")
     warn("Uncaught exception in update manager: #{e.message}")
   end
 
