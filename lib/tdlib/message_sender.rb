@@ -14,7 +14,7 @@ module TD
       setup_message_tracking
     end
     
-    def send_text(chat_id, text, parse_mode: 'MarkdownV2')
+    def send_text(chat_id, text, parse_mode: 'MarkdownV2', reply_to: nil)
       formatted_text = parse_markdown_text(text.to_s, parse_mode)
       
       content = TD::Types::InputMessageContent::Text.new(
@@ -23,12 +23,15 @@ module TD
         clear_draft: false
       )
       
-      dlog "[TD_SEND_TEXT] chat=#{chat_id} text=#{text[0,50]}..."
+      # Build reply_to structure if message_id provided
+      reply_to_param = reply_to ? TD::Types::InputMessageReplyTo::Message.new(message_id: reply_to) : nil
+      
+      dlog "[TD_SEND_TEXT] chat=#{chat_id} text=#{text[0,50]}... reply_to=#{reply_to}"
       
       sent = client.send_message(
         chat_id: chat_id,
         message_thread_id: 0,
-        reply_to: nil,
+        reply_to: reply_to_param,
         options: nil,
         reply_markup: nil,
         input_message_content: content
@@ -48,7 +51,7 @@ module TD
       { message_id: 0, text: text }
     end
     
-    def send_video(chat_id, caption, video:, duration: 0, width: 0, height: 0, supports_streaming: false, **extra_params)
+    def send_video(chat_id, caption, video:, duration: 0, width: 0, height: 0, supports_streaming: false, reply_to: nil, **extra_params)
       path = file_manager.extract_local_path(video)
       raise 'video path missing' unless path && !path.empty?
       
@@ -75,12 +78,15 @@ module TD
         has_spoiler: false
       )
       
-      dlog "[TD_SEND_VIDEO] chat=#{chat_id} path=#{safe_path}"
+      # Build reply_to structure if message_id provided
+      reply_to_param = reply_to ? TD::Types::InputMessageReplyTo::Message.new(message_id: reply_to) : nil
+      
+      dlog "[TD_SEND_VIDEO] chat=#{chat_id} path=#{safe_path} reply_to=#{reply_to}"
       
       sent = client.send_message(
         chat_id: chat_id,
         message_thread_id: 0,
-        reply_to: nil,
+        reply_to: reply_to_param,
         options: nil,
         reply_markup: nil,
         input_message_content: content
@@ -92,7 +98,7 @@ module TD
       { message_id: 0, text: caption }
     end
     
-    def send_document(chat_id, caption, document:, **extra_params)
+    def send_document(chat_id, caption, document:, reply_to: nil, **extra_params)
       path = file_manager.extract_local_path(document)
       raise 'document path missing' unless path && !path.empty?
       
@@ -106,12 +112,15 @@ module TD
         caption: parse_markdown_text(caption.to_s)
       )
       
-      dlog "[TD_SEND_DOC] chat=#{chat_id} path=#{safe_path}"
+      # Build reply_to structure if message_id provided
+      reply_to_param = reply_to ? TD::Types::InputMessageReplyTo::Message.new(message_id: reply_to) : nil
+      
+      dlog "[TD_SEND_DOC] chat=#{chat_id} path=#{safe_path} reply_to=#{reply_to}"
       
       sent = client.send_message(
         chat_id: chat_id,
         message_thread_id: 0,
-        reply_to: nil,
+        reply_to: reply_to_param,
         options: nil,
         reply_markup: nil,
         input_message_content: content
