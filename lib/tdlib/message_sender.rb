@@ -259,7 +259,14 @@ module TD
       when TD::Types::Base
         input.local_path if input.respond_to?(:local_path)
       else
-        nil
+        # Handle Faraday::UploadIO and other objects with local_path method
+        if input.respond_to?(:local_path)
+          input.local_path
+        elsif input.respond_to?(:path)
+          input.path
+        else
+          input.to_s if input
+        end
       end
     end
     
