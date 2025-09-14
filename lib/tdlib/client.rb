@@ -36,7 +36,7 @@ class TD::Client
     on TD::Types::Update::AuthorizationState do |update|
       case update.authorization_state
       when TD::Types::AuthorizationState::WaitTdlibParameters
-        set_tdlib_parameters(**@config)
+        set_tdlib_parameters(parameters: @config)
         @ready_condition_mutex.synchronize do
           @ready = true
           @ready_condition.broadcast
