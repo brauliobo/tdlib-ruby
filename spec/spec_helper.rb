@@ -34,4 +34,21 @@ RSpec.configure do |config|
   end
 
   config.shared_context_metadata_behavior = :apply_to_host_groups
+  
+  # Filter out integration specs by default (they require real TDLib connection)
+  config.filter_run_excluding :integration
+  
+  # Add timeout to prevent hanging specs
+  config.around(:each) do |example|
+    timeout_thread = Thread.new do
+      sleep 3
+      Thread.main.raise Timeout::Error, "Spec took longer than 3 seconds"
+    end
+    
+    begin
+      example.run
+    ensure
+      timeout_thread.kill
+    end
+  end
 end
