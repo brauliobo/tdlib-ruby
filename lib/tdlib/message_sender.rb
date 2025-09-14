@@ -225,7 +225,6 @@ module TD
       
       content = TD::Types::InputMessageContent::Audio.new(
         audio: TD::Types::InputFile::Local.new(path: safe_path),
-        album_cover_thumbnail: nil,
         duration: duration,
         title: title || File.basename(safe_path, '.*'),
         performer: performer || '',
