@@ -191,6 +191,36 @@ module TD
       TD::Types::FormattedText.new(text: text.to_s, entities: [])
     end
     
+    # Send audio message
+    def send_audio(chat_id, caption, audio:, duration: 0, performer: nil, title: nil, reply_to: nil, **extra_params)
+      safe_path = extract_local_path(audio) || audio
+      
+      content = TD::Types::InputMessageContent::Audio.new(
+        audio: TD::Types::InputFile::Local.new(path: safe_path),
+        album_cover_thumbnail: nil,
+        duration: duration,
+        title: title || File.basename(safe_path, '.*'),
+        performer: performer,
+        caption: parse_markdown_text(caption.to_s)
+      )
+      
+      # Build reply_to structure if message_id provided
+      reply_to_param = reply_to ? TD::Types::InputMessageReplyTo::Message.new(message_id: reply_to) : nil
+      
+      dlog "[TD_SEND_AUDIO] chat=#{chat_id} path=#{safe_path} reply_to=#{reply_to}"
+      
+      sent = client.send_message(
+        chat_id: chat_id,
+        message_thread_id: 0,
+        reply_to: reply_to_param,
+        options: nil,
+        reply_markup: nil,
+        input_message_content: content
+      ).value(60)
+      
+      sent
+    end
+    
     # Edit message text
     def edit_message(chat_id, message_id, text, parse_mode: 'MarkdownV2')
       formatted_text = parse_markdown_text(text.to_s, parse_mode)
