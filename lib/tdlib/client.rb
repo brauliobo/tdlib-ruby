@@ -36,7 +36,14 @@ class TD::Client
     on TD::Types::Update::AuthorizationState do |update|
       case update.authorization_state
       when TD::Types::AuthorizationState::WaitTdlibParameters
-        set_tdlib_parameters(parameters: @config)
+        # Ensure all required parameters are present
+        params = @config.dup
+        params[:system_language_code] ||= 'en'
+        params[:device_model] ||= 'Ruby TD client'
+        params[:application_version] ||= '1.0'
+        params[:system_version] ||= 'Unknown'
+        
+        set_tdlib_parameters(parameters: params)
         @ready_condition_mutex.synchronize do
           @ready = true
           @ready_condition.broadcast
