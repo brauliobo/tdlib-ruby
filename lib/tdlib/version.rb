@@ -1,3 +1,3 @@
 module TD
-  VERSION = '2.3.0'
+  VERSION = '3.2.0'
 end
