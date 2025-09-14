@@ -219,32 +219,6 @@ module TD
       nil
     end
     
-    private
-    
-    def setup_message_tracking
-      client.on TD::Types::Update::MessageSendSucceeded do |update|
-        if update.respond_to?(:old_message_id) && update.respond_to?(:message) && update.message.respond_to?(:id)
-          old_id = update.old_message_id
-          new_id = update.message.id
-          @message_id_map[old_id] = new_id
-          dlog "[MSG_ID_UPDATE] #{old_id} -> #{new_id}"
-        end
-      end
-    end
-    
-    def parse_markdown_text(text, parse_mode = 'MarkdownV2')
-      return TD::Types::FormattedText.new(text: '', entities: []) if text.to_s.empty?
-      
-      # Use TD::Markdown parser
-      result = TD::Markdown.parse(client, text.to_s)
-      dlog "[MARKDOWN_PARSE] '#{text[0,30]}...' -> #{result.entities.length} entities"
-      result
-    rescue => e
-      dlog "[PARSE_MARKDOWN_ERROR] #{e.class}: #{e.message}"
-      # Fallback to plain text
-      TD::Types::FormattedText.new(text: text.to_s, entities: [])
-    end
-    
     # Send audio message
     def send_audio(chat_id, caption, audio:, duration: 0, performer: nil, title: nil, reply_to: nil, **extra_params)
       safe_path = extract_local_path(audio) || audio
@@ -254,7 +228,7 @@ module TD
         album_cover_thumbnail: nil,
         duration: duration,
         title: title || File.basename(safe_path, '.*'),
-        performer: performer,
+        performer: performer || '',
         caption: parse_markdown_text(caption.to_s)
       )
       
@@ -280,14 +254,40 @@ module TD
       case input
       when String
         input
-      when Hash, TD::Types::Base
-        input[:local_path] || input.local_path if input.respond_to?(:local_path)
+      when Hash
+        input[:local_path] || input['local_path']
+      when TD::Types::Base
+        input.local_path if input.respond_to?(:local_path)
       else
         nil
       end
     end
     
     private
+    
+    def setup_message_tracking
+      client.on TD::Types::Update::MessageSendSucceeded do |update|
+        if update.respond_to?(:old_message_id) && update.respond_to?(:message) && update.message.respond_to?(:id)
+          old_id = update.old_message_id
+          new_id = update.message.id
+          @message_id_map[old_id] = new_id
+          dlog "[MSG_ID_UPDATE] #{old_id} -> #{new_id}"
+        end
+      end
+    end
+    
+    def parse_markdown_text(text, parse_mode = 'MarkdownV2')
+      return TD::Types::FormattedText.new(text: '', entities: []) if text.to_s.empty?
+      
+      # Use TD::Markdown parser
+      result = TD::Markdown.parse(client, text.to_s)
+      dlog "[MARKDOWN_PARSE] '#{text[0,30]}...' -> #{result.entities.length} entities"
+      result
+    rescue => e
+      dlog "[PARSE_MARKDOWN_ERROR] #{e.class}: #{e.message}"
+      # Fallback to plain text
+      TD::Types::FormattedText.new(text: text.to_s, entities: [])
+    end
     
   end
 end

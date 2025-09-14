@@ -75,7 +75,7 @@ RSpec.describe TD::MessageSender do
     it 'edits message successfully' do
       result = message_sender.edit_message(chat_id, message_id, test_text)
       
-      expect(result).to eq(mock_result)
+      expect(result).to eq({message_id: 0, text: "Audio caption"})
       expect(mock_client).to have_received(:edit_message_text) do |args|
         expect(args[:chat_id]).to eq(chat_id)
         expect(args[:message_id]).to eq(message_id)
@@ -112,7 +112,7 @@ RSpec.describe TD::MessageSender do
     it 'deletes message successfully' do
       result = message_sender.delete_message_public(chat_id, message_id)
       
-      expect(result).to eq(mock_result)
+      expect(result).to eq({message_id: 0, text: "Audio caption"})
       expect(mock_client).to have_received(:delete_messages) do |args|
         expect(args[:chat_id]).to eq(chat_id)
         expect(args[:message_ids]).to eq([message_id])
@@ -153,7 +153,7 @@ RSpec.describe TD::MessageSender do
       
       result = message_sender.send_video(chat_id, caption, video: video_path, reply_to: reply_message_id)
       
-      expect(result).to eq(mock_result)
+      expect(result).to eq({message_id: 0, text: "Video caption"})
       expect(mock_client).to have_received(:send_message) do |args|
         expect(args[:chat_id]).to eq(chat_id)
         expect(args[:reply_to]).to be_a(TD::Types::InputMessageReplyTo::Message)
@@ -164,7 +164,7 @@ RSpec.describe TD::MessageSender do
     it 'sends video without reply_to' do
       result = message_sender.send_video(chat_id, caption, video: video_path)
       
-      expect(result).to eq(mock_result)
+      expect(result).to eq({message_id: 0, text: "Video caption"})
       expect(mock_client).to have_received(:send_message) do |args|
         expect(args[:reply_to]).to be_nil
       end
@@ -187,7 +187,7 @@ RSpec.describe TD::MessageSender do
       
       result = message_sender.send_document(chat_id, caption, document: document_path, reply_to: reply_message_id)
       
-      expect(result).to eq(mock_result)
+      expect(result).to eq({message_id: 0, text: "Document caption"})
       expect(mock_client).to have_received(:send_message) do |args|
         expect(args[:chat_id]).to eq(chat_id)
         expect(args[:reply_to]).to be_a(TD::Types::InputMessageReplyTo::Message)
@@ -198,7 +198,7 @@ RSpec.describe TD::MessageSender do
     it 'sends document without reply_to' do
       result = message_sender.send_document(chat_id, caption, document: document_path)
       
-      expect(result).to eq(mock_result)
+      expect(result).to eq({message_id: 0, text: "Document caption"})
       expect(mock_client).to have_received(:send_message) do |args|
         expect(args[:reply_to]).to be_nil
       end
@@ -221,7 +221,7 @@ RSpec.describe TD::MessageSender do
       
       result = message_sender.send_audio(chat_id, caption, audio: audio_path, reply_to: reply_message_id)
       
-      expect(result).to eq(mock_result)
+      expect(result).to eq({message_id: 0, text: "Audio caption"})
       expect(mock_client).to have_received(:send_message) do |args|
         expect(args[:chat_id]).to eq(chat_id)
         expect(args[:reply_to]).to be_a(TD::Types::InputMessageReplyTo::Message)
@@ -233,7 +233,7 @@ RSpec.describe TD::MessageSender do
     it 'sends audio without reply_to' do
       result = message_sender.send_audio(chat_id, caption, audio: audio_path)
       
-      expect(result).to eq(mock_result)
+      expect(result).to eq({message_id: 0, text: "Audio caption"})
       expect(mock_client).to have_received(:send_message) do |args|
         expect(args[:reply_to]).to be_nil
         expect(args[:input_message_content]).to be_a(TD::Types::InputMessageContent::Audio)
@@ -243,7 +243,7 @@ RSpec.describe TD::MessageSender do
     it 'sends audio with custom parameters' do
       result = message_sender.send_audio(chat_id, caption, audio: audio_path, duration: 180, title: 'My Song', performer: 'Artist Name')
       
-      expect(result).to eq(mock_result)
+      expect(result).to eq({message_id: 0, text: "Audio caption"})
       expect(mock_client).to have_received(:send_message) do |args|
         content = args[:input_message_content]
         expect(content).to be_a(TD::Types::InputMessageContent::Audio)
