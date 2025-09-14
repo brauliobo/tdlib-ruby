@@ -165,6 +165,56 @@ module TD
       dlog "[TD_DELETE_ERROR] #{e.class}: #{e.message}"
     end
     
+    # Edit message text
+    def edit_message(chat_id, message_id, text, parse_mode: 'MarkdownV2')
+      formatted_text = parse_markdown_text(text.to_s, parse_mode)
+      
+      dlog "[TD_EDIT_MESSAGE] chat=#{chat_id} id=#{message_id} text=#{text[0,50]}..."
+      
+      result = client.edit_message_text(
+        chat_id: chat_id,
+        message_id: message_id,
+        input_message_content: TD::Types::InputMessageContent::Text.new(
+          text: formatted_text,
+          link_preview_options: nil,
+          clear_draft: false
+        )
+      ).value(15)
+      
+      if result
+        dlog "[TD_EDIT_MESSAGE_SUCCESS] chat=#{chat_id} id=#{message_id}"
+        result
+      else
+        dlog "[TD_EDIT_MESSAGE_FAILED] chat=#{chat_id} id=#{message_id}"
+        nil
+      end
+    rescue => e
+      dlog "[TD_EDIT_MESSAGE_ERROR] #{e.class}: #{e.message}"
+      nil
+    end
+    
+    # Delete message (public version)
+    def delete_message_public(chat_id, message_id)
+      dlog "[TD_DELETE_MESSAGE] chat=#{chat_id} id=#{message_id}"
+      
+      result = client.delete_messages(
+        chat_id: chat_id,
+        message_ids: [message_id],
+        revoke: true
+      ).value(15)
+      
+      if result
+        dlog "[TD_DELETE_MESSAGE_SUCCESS] chat=#{chat_id} id=#{message_id}"
+        result
+      else
+        dlog "[TD_DELETE_MESSAGE_FAILED] chat=#{chat_id} id=#{message_id}"
+        nil
+      end
+    rescue => e
+      dlog "[TD_DELETE_MESSAGE_ERROR] #{e.class}: #{e.message}"
+      nil
+    end
+    
     private
     
     def setup_message_tracking
@@ -221,54 +271,5 @@ module TD
       sent
     end
     
-    # Edit message text
-    def edit_message(chat_id, message_id, text, parse_mode: 'MarkdownV2')
-      formatted_text = parse_markdown_text(text.to_s, parse_mode)
-      
-      dlog "[TD_EDIT_MESSAGE] chat=#{chat_id} id=#{message_id} text=#{text[0,50]}..."
-      
-      result = client.edit_message_text(
-        chat_id: chat_id,
-        message_id: message_id,
-        input_message_content: TD::Types::InputMessageContent::Text.new(
-          text: formatted_text,
-          link_preview_options: nil,
-          clear_draft: false
-        )
-      ).value(15)
-      
-      if result
-        dlog "[TD_EDIT_MESSAGE_SUCCESS] chat=#{chat_id} id=#{message_id}"
-        result
-      else
-        dlog "[TD_EDIT_MESSAGE_FAILED] chat=#{chat_id} id=#{message_id}"
-        nil
-      end
-    rescue => e
-      dlog "[TD_EDIT_MESSAGE_ERROR] #{e.class}: #{e.message}"
-      nil
-    end
-    
-    # Delete message
-    def delete_message(chat_id, message_id)
-      dlog "[TD_DELETE_MESSAGE] chat=#{chat_id} id=#{message_id}"
-      
-      result = client.delete_messages(
-        chat_id: chat_id,
-        message_ids: [message_id],
-        revoke: true
-      ).value(15)
-      
-      if result
-        dlog "[TD_DELETE_MESSAGE_SUCCESS] chat=#{chat_id} id=#{message_id}"
-        result
-      else
-        dlog "[TD_DELETE_MESSAGE_FAILED] chat=#{chat_id} id=#{message_id}"
-        nil
-      end
-    rescue => e
-      dlog "[TD_DELETE_MESSAGE_ERROR] #{e.class}: #{e.message}"
-      nil
-    end
   end
 end
