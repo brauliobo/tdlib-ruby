@@ -32,7 +32,7 @@ RSpec.describe TD::MessageSender do
       it 'sends text message successfully' do
         result = message_sender.send_text(chat_id, test_text)
         
-        expect(result).to eq(mock_result)
+        expect(result).to eq({message_id: 0, text: "Test message"})
         expect(mock_client).to have_received(:send_message) do |args|
           expect(args[:chat_id]).to eq(chat_id)
           expect(args[:reply_to]).to be_nil
@@ -46,7 +46,7 @@ RSpec.describe TD::MessageSender do
       it 'sends text message with reply_to' do
         result = message_sender.send_text(chat_id, test_text, reply_to: reply_message_id)
         
-        expect(result).to eq(mock_result)
+        expect(result).to eq({message_id: 0, text: "Test message"})
         expect(mock_client).to have_received(:send_message) do |args|
           expect(args[:chat_id]).to eq(chat_id)
           expect(args[:reply_to]).to be_a(TD::Types::InputMessageReplyTo::Message)
@@ -79,6 +79,7 @@ RSpec.describe TD::MessageSender do
       expect(mock_client).to have_received(:edit_message_text) do |args|
         expect(args[:chat_id]).to eq(chat_id)
         expect(args[:message_id]).to eq(message_id)
+        expect(args[:reply_markup]).to be_nil
         expect(args[:input_message_content]).to be_a(TD::Types::InputMessageContent::Text)
       end
     end
@@ -109,7 +110,7 @@ RSpec.describe TD::MessageSender do
     end
 
     it 'deletes message successfully' do
-      result = message_sender.delete_message(chat_id, message_id)
+      result = message_sender.delete_message_public(chat_id, message_id)
       
       expect(result).to eq(mock_result)
       expect(mock_client).to have_received(:delete_messages) do |args|
@@ -122,7 +123,7 @@ RSpec.describe TD::MessageSender do
     it 'handles delete failures gracefully' do
       allow(mock_delete_result).to receive(:value).and_return(nil)
       
-      result = message_sender.delete_message(chat_id, message_id)
+      result = message_sender.delete_message_public(chat_id, message_id)
       
       expect(result).to be_nil
     end
@@ -130,7 +131,7 @@ RSpec.describe TD::MessageSender do
     it 'handles exceptions gracefully' do
       allow(mock_client).to receive(:delete_messages).and_raise(StandardError, 'delete failed')
       
-      result = message_sender.delete_message(chat_id, message_id)
+      result = message_sender.delete_message_public(chat_id, message_id)
       
       expect(result).to be_nil
     end
@@ -201,6 +202,80 @@ RSpec.describe TD::MessageSender do
       expect(mock_client).to have_received(:send_message) do |args|
         expect(args[:reply_to]).to be_nil
       end
+    end
+  end
+
+  describe '#send_audio' do
+    let(:audio_path) { '/path/to/audio.mp3' }
+    let(:caption) { 'Audio caption' }
+    let(:mock_result) { double('message', id: message_id) }
+    let(:mock_send_result) { double('send_result', value: mock_result) }
+
+    before do
+      allow(mock_client).to receive(:send_message).and_return(mock_send_result)
+      allow(message_sender).to receive(:extract_local_path).and_return(audio_path)
+    end
+
+    it 'sends audio with reply_to' do
+      reply_message_id = 333444
+      
+      result = message_sender.send_audio(chat_id, caption, audio: audio_path, reply_to: reply_message_id)
+      
+      expect(result).to eq(mock_result)
+      expect(mock_client).to have_received(:send_message) do |args|
+        expect(args[:chat_id]).to eq(chat_id)
+        expect(args[:reply_to]).to be_a(TD::Types::InputMessageReplyTo::Message)
+        expect(args[:reply_to].message_id).to eq(reply_message_id)
+        expect(args[:input_message_content]).to be_a(TD::Types::InputMessageContent::Audio)
+      end
+    end
+
+    it 'sends audio without reply_to' do
+      result = message_sender.send_audio(chat_id, caption, audio: audio_path)
+      
+      expect(result).to eq(mock_result)
+      expect(mock_client).to have_received(:send_message) do |args|
+        expect(args[:reply_to]).to be_nil
+        expect(args[:input_message_content]).to be_a(TD::Types::InputMessageContent::Audio)
+      end
+    end
+
+    it 'sends audio with custom parameters' do
+      result = message_sender.send_audio(chat_id, caption, audio: audio_path, duration: 180, title: 'My Song', performer: 'Artist Name')
+      
+      expect(result).to eq(mock_result)
+      expect(mock_client).to have_received(:send_message) do |args|
+        content = args[:input_message_content]
+        expect(content).to be_a(TD::Types::InputMessageContent::Audio)
+        expect(content.duration).to eq(180)
+        expect(content.title).to eq('My Song')
+        expect(content.performer).to eq('Artist Name')
+      end
+    end
+  end
+
+  describe '#extract_local_path' do
+    it 'returns string input as-is' do
+      path = '/path/to/file.txt'
+      result = message_sender.extract_local_path(path)
+      expect(result).to eq(path)
+    end
+
+    it 'extracts local_path from hash' do
+      hash = { local_path: '/path/from/hash.txt' }
+      result = message_sender.extract_local_path(hash)
+      expect(result).to eq('/path/from/hash.txt')
+    end
+
+    it 'extracts local_path from object with method' do
+      obj = double('file_object', local_path: '/path/from/object.txt')
+      result = message_sender.extract_local_path(obj)
+      expect(result).to eq('/path/from/object.txt')
+    end
+
+    it 'returns nil for unsupported input' do
+      result = message_sender.extract_local_path(123)
+      expect(result).to be_nil
     end
   end
 end

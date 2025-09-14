@@ -275,5 +275,19 @@ module TD
       sent
     end
     
+    # Extract local file path from various input types
+    def extract_local_path(input)
+      case input
+      when String
+        input
+      when Hash, TD::Types::Base
+        input[:local_path] || input.local_path if input.respond_to?(:local_path)
+      else
+        nil
+      end
+    end
+    
+    private
+    
   end
 end
