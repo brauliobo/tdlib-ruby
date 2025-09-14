@@ -229,7 +229,7 @@ module TD
       return nil unless thumb
       
       thumb_path = extract_local_path(thumb) || thumb
-      return nil unless thumb_path && !thumb_path.empty?
+      return nil unless thumb_path && thumb_path.to_s && !thumb_path.to_s.empty?
       
       TD::Types::InputThumbnail.new(
         thumbnail: TD::Types::InputFile::Local.new(path: thumb_path),

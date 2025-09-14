@@ -314,8 +314,77 @@ RSpec.describe TD::MessageSender do
       expect(result).to eq('/path/from/object.txt')
     end
 
-    it 'returns nil for unsupported input' do
+    it 'returns string representation for unsupported input types' do
       result = message_sender.extract_local_path(123)
+      expect(result).to eq("123")
+    end
+  end
+
+  describe '#create_input_thumbnail (private method)' do
+    # Access private method for testing
+    let(:create_thumbnail) { message_sender.method(:create_input_thumbnail) }
+
+    it 'returns nil when thumb is nil' do
+      result = create_thumbnail.call(nil)
+      expect(result).to be_nil
+    end
+
+    it 'returns nil when thumb is empty string' do
+      result = create_thumbnail.call('')
+      expect(result).to be_nil
+    end
+
+    it 'creates InputThumbnail from string path' do
+      thumb_path = '/path/to/thumb.jpg'
+      result = create_thumbnail.call(thumb_path)
+      
+      expect(result).to be_a(TD::Types::InputThumbnail)
+      expect(result.thumbnail).to be_a(TD::Types::InputFile::Local)
+      expect(result.thumbnail.path).to eq(thumb_path)
+      expect(result.width).to eq(0)
+      expect(result.height).to eq(0)
+    end
+
+    it 'creates InputThumbnail with custom width and height' do
+      thumb_path = '/path/to/thumb.jpg'
+      result = create_thumbnail.call(thumb_path, width: 320, height: 240)
+      
+      expect(result).to be_a(TD::Types::InputThumbnail)
+      expect(result.width).to eq(320)
+      expect(result.height).to eq(240)
+    end
+
+    it 'extracts path from Faraday::UploadIO object' do
+      upload_io = double('UploadIO', local_path: '/path/from/upload.jpg')
+      allow(message_sender).to receive(:extract_local_path).with(upload_io).and_return('/path/from/upload.jpg')
+      
+      result = create_thumbnail.call(upload_io)
+      
+      expect(result).to be_a(TD::Types::InputThumbnail)
+      expect(result.thumbnail.path).to eq('/path/from/upload.jpg')
+    end
+
+    it 'returns nil when extract_local_path returns nil' do
+      upload_io = double('UploadIO')
+      allow(message_sender).to receive(:extract_local_path).with(upload_io).and_return(nil)
+      
+      result = create_thumbnail.call(upload_io)
+      expect(result).to be_nil
+    end
+
+    it 'returns nil when extract_local_path returns empty string' do
+      upload_io = double('UploadIO')
+      allow(message_sender).to receive(:extract_local_path).with(upload_io).and_return('')
+      
+      result = create_thumbnail.call(upload_io)
+      expect(result).to be_nil
+    end
+
+    it 'handles exceptions gracefully and returns nil' do
+      # Mock TD::Types::InputThumbnail to raise an error
+      allow(TD::Types::InputThumbnail).to receive(:new).and_raise(StandardError.new('Test error'))
+      
+      result = create_thumbnail.call('/path/to/thumb.jpg')
       expect(result).to be_nil
     end
   end
