@@ -51,22 +51,25 @@ module TD
       { message_id: 0, text: text }
     end
     
-    def send_video(chat_id, caption, video:, duration: 0, width: 0, height: 0, supports_streaming: false, reply_to: nil, **extra_params)
+    def send_video(chat_id, caption, video:, duration: 0, width: 0, height: 0, supports_streaming: false, thumb: nil, reply_to: nil, **extra_params)
       path = file_manager.extract_local_path(video)
       raise 'video path missing' unless path && !path.empty?
       
       # Copy file to safe location to prevent cleanup issues
       safe_path = file_manager.copy_to_safe_location(path)
       
-      # Extract relevant parameters, ignoring Bot API specific ones like star_count, thumb, title, performer
+      # Extract relevant parameters, ignoring Bot API specific ones like star_count, title, performer
       duration = (extra_params[:duration] || duration).to_i
       width = (extra_params[:width] || width).to_i  
       height = (extra_params[:height] || height).to_i
       supports_streaming = extra_params.key?(:supports_streaming) ? extra_params[:supports_streaming] : supports_streaming
       
+      # Handle thumbnail if provided, otherwise use dummy
+      thumbnail = create_input_thumbnail(thumb, width: width, height: height) || file_manager.create_dummy_thumbnail
+      
       content = TD::Types::InputMessageContent::Video.new(
         video: TD::Types::InputFile::Local.new(path: safe_path),
-        thumbnail: file_manager.create_dummy_thumbnail,
+        thumbnail: thumbnail,
         added_sticker_file_ids: [],
         duration: duration,
         width: width,
@@ -81,7 +84,7 @@ module TD
       # Build reply_to structure if message_id provided
       reply_to_param = reply_to ? TD::Types::InputMessageReplyTo::Message.new(message_id: reply_to) : nil
       
-      dlog "[TD_SEND_VIDEO] chat=#{chat_id} path=#{safe_path} reply_to=#{reply_to}"
+      dlog "[TD_SEND_VIDEO] chat=#{chat_id} path=#{safe_path} thumb=#{thumb ? 'yes' : 'dummy'} reply_to=#{reply_to}"
       
       sent = client.send_message(
         chat_id: chat_id,
@@ -219,21 +222,33 @@ module TD
       nil
     end
     
+    private
+    
+    # Create InputThumbnail from various input types
+    def create_input_thumbnail(thumb, width: 0, height: 0)
+      return nil unless thumb
+      
+      thumb_path = extract_local_path(thumb) || thumb
+      return nil unless thumb_path && !thumb_path.empty?
+      
+      TD::Types::InputThumbnail.new(
+        thumbnail: TD::Types::InputFile::Local.new(path: thumb_path),
+        width: width,   # Use 0 if unknown, as per TDLib docs
+        height: height
+      )
+    rescue => e
+      dlog "[TD_THUMBNAIL_ERROR] #{e.class}: #{e.message}"
+      nil
+    end
+    
+    public
+    
     # Send audio message
     def send_audio(chat_id, caption, audio:, duration: 0, performer: nil, title: nil, thumb: nil, reply_to: nil, **extra_params)
       safe_path = extract_local_path(audio) || audio
       
       # Handle thumbnail if provided
-      thumbnail = if thumb
-        thumb_path = extract_local_path(thumb) || thumb
-        TD::Types::InputThumbnail.new(
-          thumbnail: TD::Types::InputFile::Local.new(path: thumb_path),
-          width: 0,  # Use 0 if unknown, as per TDLib docs
-          height: 0
-        )
-      else
-        nil
-      end
+      thumbnail = create_input_thumbnail(thumb)
       
       content = TD::Types::InputMessageContent::Audio.new(
         audio: TD::Types::InputFile::Local.new(path: safe_path),
@@ -247,7 +262,7 @@ module TD
       # Build reply_to structure if message_id provided
       reply_to_param = reply_to ? TD::Types::InputMessageReplyTo::Message.new(message_id: reply_to) : nil
       
-      dlog "[TD_SEND_AUDIO] chat=#{chat_id} path=#{safe_path} thumb=#{thumb_path if thumb} reply_to=#{reply_to}"
+      dlog "[TD_SEND_AUDIO] chat=#{chat_id} path=#{safe_path} thumb=#{thumbnail ? 'yes' : 'no'} reply_to=#{reply_to}"
       
       sent = client.send_message(
         chat_id: chat_id,

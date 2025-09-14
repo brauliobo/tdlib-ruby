@@ -169,6 +169,21 @@ RSpec.describe TD::MessageSender do
         expect(args[:reply_to]).to be_nil
       end
     end
+
+    it 'sends video with thumbnail' do
+      thumb_path = '/path/to/thumb.jpg'
+      
+      result = message_sender.send_video(chat_id, caption, video: video_path, thumb: thumb_path)
+      
+      expect(result).to eq({message_id: 0, text: "Video caption"})
+      expect(mock_client).to have_received(:send_message) do |args|
+        content = args[:input_message_content]
+        expect(content).to be_a(TD::Types::InputMessageContent::Video)
+        expect(content.thumbnail).to be_a(TD::Types::InputThumbnail)
+        expect(content.thumbnail.thumbnail).to be_a(TD::Types::InputFile::Local)
+        expect(content.thumbnail.thumbnail.path).to eq(thumb_path)
+      end
+    end
   end
 
   describe '#send_document' do
