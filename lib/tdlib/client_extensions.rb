@@ -109,7 +109,7 @@ module TD
         params[:application_version] ||= '1.0'
         params[:system_version] ||= 'Unknown'
         
-        set_tdlib_parameters(parameters: params)
+        set_tdlib_parameters(**params)
         dlog "[AUTH] tdlib parameters set"
         
       when TD::Types::AuthorizationState::WaitPhoneNumber

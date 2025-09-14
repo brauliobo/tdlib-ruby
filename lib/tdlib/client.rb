@@ -43,7 +43,7 @@ class TD::Client
         params[:application_version] ||= '1.0'
         params[:system_version] ||= 'Unknown'
         
-        set_tdlib_parameters(parameters: params)
+        set_tdlib_parameters(**params)
         @ready_condition_mutex.synchronize do
           @ready = true
           @ready_condition.broadcast
