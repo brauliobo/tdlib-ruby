@@ -102,6 +102,16 @@ module TD
       when TD::Types::AuthorizationState::WaitTdlibParameters
         dlog "[AUTH] waiting tdlib params; api_id?=#{!ENV['TDLIB_API_ID'].to_s.empty?} api_hash?=#{!ENV['TDLIB_API_HASH'].to_s.empty?} db=#{TD.config.client.database_directory} files=#{TD.config.client.files_directory}"
         
+        # Set TDLib parameters with all required fields
+        params = TD.config.client.to_h
+        params[:system_language_code] ||= 'en'
+        params[:device_model] ||= 'Ruby TD client'
+        params[:application_version] ||= '1.0'
+        params[:system_version] ||= 'Unknown'
+        
+        set_tdlib_parameters(parameters: params)
+        dlog "[AUTH] tdlib parameters set"
+        
       when TD::Types::AuthorizationState::WaitPhoneNumber
         handle_phone_input
         
