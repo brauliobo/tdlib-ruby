@@ -64,8 +64,15 @@ module TD
       height = (extra_params[:height] || height).to_i
       supports_streaming = extra_params.key?(:supports_streaming) ? extra_params[:supports_streaming] : supports_streaming
       
-      # Handle thumbnail if provided, otherwise use dummy
-      thumbnail = create_input_thumbnail(thumb, width: width, height: height) || file_manager.create_dummy_thumbnail
+      # Handle thumbnail: copy to a safe path to avoid cleanup races; if anything fails, let Telegram generate it
+      thumb_safe_path = nil
+      if thumb
+        original_thumb_path = file_manager.extract_local_path(thumb) || thumb
+        if original_thumb_path && !original_thumb_path.to_s.empty? && File.exist?(original_thumb_path.to_s)
+          thumb_safe_path = file_manager.copy_to_safe_location(original_thumb_path.to_s)
+        end
+      end
+      thumbnail = create_input_thumbnail(thumb_safe_path, width: width, height: height)
       
       content = TD::Types::InputMessageContent::Video.new(
         video: TD::Types::InputFile::Local.new(path: safe_path),
@@ -84,7 +91,7 @@ module TD
       # Build reply_to structure if message_id provided
       reply_to_param = reply_to ? TD::Types::InputMessageReplyTo::Message.new(message_id: reply_to) : nil
       
-      dlog "[TD_SEND_VIDEO] chat=#{chat_id} path=#{safe_path} thumb=#{thumb ? 'yes' : 'dummy'} reply_to=#{reply_to}"
+      dlog "[TD_SEND_VIDEO] chat=#{chat_id} path=#{safe_path} thumb=#{thumbnail ? 'yes' : 'auto'} reply_to=#{reply_to}"
       
       sent = client.send_message(
         chat_id: chat_id,
