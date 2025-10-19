@@ -110,22 +110,33 @@ module TD
     
     # Extract file_id from various input types
     def extract_file_id(file_id_or_info)
-      if file_id_or_info.respond_to?(:document) && file_id_or_info.document.respond_to?(:file_id)
-        # This is a message document object
-        file_id_or_info.document.file_id
-      elsif file_id_or_info.respond_to?(:file_id)
-        # This is a document or file object with direct file_id
-        file_id_or_info.file_id
-      elsif file_id_or_info.respond_to?(:document) && file_id_or_info.document.respond_to?(:id)
-        # This is a document object with id field instead of file_id
-        file_id_or_info.document.id
-      elsif file_id_or_info.respond_to?(:id)
-        # This is a file object with id field
-        file_id_or_info.id
-      else
-        # This should be a file_id integer
-        file_id_or_info
+      # Common nested keys to look for (video, audio, voice, animation, photo etc.)
+      nested_media_keys = %i[video audio voice animation photo]
+
+      # 1. Document-like object (Telegram messages with .document)
+      if file_id_or_info.respond_to?(:document)
+        doc = file_id_or_info.document
+        return doc.file_id if doc.respond_to?(:file_id)
+        return doc.id       if doc.respond_to?(:id)
       end
+
+      # 2. Direct file-type object containing file_id
+      return file_id_or_info.file_id if file_id_or_info.respond_to?(:file_id)
+
+      # 3. Objects that wrap TD::Types::File under common keys (e.g., TD::Types::Video#audio etc.)
+      nested_media_keys.each do |key|
+        if file_id_or_info.respond_to?(key)
+          inner = file_id_or_info.public_send(key)
+          return inner.file_id if inner.respond_to?(:file_id)
+          return inner.id      if inner.respond_to?(:id)
+        end
+      end
+
+      # 4. File-like object with id
+      return file_id_or_info.id if file_id_or_info.respond_to?(:id)
+
+      # 5. Assume the argument itself is a numeric file_id
+      file_id_or_info
     end
     
     # Copy file to specified directory
