@@ -71,8 +71,13 @@ module TD
         if original_thumb_path && !original_thumb_path.to_s.empty? && File.exist?(original_thumb_path.to_s)
           thumb_safe_path = file_manager.copy_to_safe_location(original_thumb_path.to_s)
         end
+      else
+        # Attempt to generate thumbnail from video if none provided
+        thumb_safe_path = generate_video_thumbnail(safe_path)
       end
-      thumbnail = create_input_thumbnail(thumb_safe_path, width: width, height: height)
+      # If provided thumb invalid/missing, fall back to dummy
+      # Pass 0x0 per TDLib recommendation; non-matching dims can cause ignore
+      thumbnail = create_input_thumbnail(thumb_safe_path, width: 0, height: 0) || file_manager.create_dummy_thumbnail
       
       content = TD::Types::InputMessageContent::Video.new(
         video: TD::Types::InputFile::Local.new(path: safe_path),
@@ -233,18 +238,30 @@ module TD
     
     # Create InputThumbnail from various input types
     def create_input_thumbnail(thumb, width: 0, height: 0)
-      return nil unless thumb
-      
-      thumb_path = extract_local_path(thumb) || thumb
-      return nil unless thumb_path && thumb_path.to_s && !thumb_path.to_s.empty?
+      return nil unless thumb && thumb.to_s && !thumb.to_s.empty?
       
       TD::Types::InputThumbnail.new(
-        thumbnail: TD::Types::InputFile::Local.new(path: thumb_path),
-        width: width,   # Use 0 if unknown, as per TDLib docs
+        thumbnail: TD::Types::InputFile::Local.new(path: thumb.to_s),
+        width: width,
         height: height
       )
     rescue => e
       dlog "[TD_THUMBNAIL_ERROR] #{e.class}: #{e.message}"
+      nil
+    end
+
+    # Generate a JPEG thumbnail from the first frame of the video using ffmpeg
+    def generate_video_thumbnail(video_path)
+      return nil unless video_path && File.exist?(video_path)
+
+      thumb_path = File.join(Dir.tmpdir, "thumb_#{SecureRandom.hex(8)}.jpg")
+      cmd = %(ffmpeg -y -i "#{video_path}" -vf "thumbnail,scale=320:-1" -frames:v 1 "#{thumb_path}" 2>/dev/null)
+      system(cmd)
+      return nil unless File.exist?(thumb_path)
+
+      file_manager.copy_to_safe_location(thumb_path)
+    rescue => e
+      dlog "[THUMB_GEN_ERROR] #{e.class}: #{e.message}"
       nil
     end
     
@@ -252,35 +269,37 @@ module TD
     
     # Send audio message
     def send_audio(chat_id, caption, audio:, duration: 0, performer: nil, title: nil, thumb: nil, reply_to: nil, **extra_params)
-      safe_path = extract_local_path(audio) || audio
+      path = file_manager.extract_local_path(audio)
+      raise 'audio path missing' unless path && !path.empty?
       
-      # Handle thumbnail if provided
-      thumbnail = create_input_thumbnail(thumb)
+      safe_path = file_manager.copy_to_safe_location(path)
+      duration = (extra_params[:duration] || duration).to_i
+      title = (extra_params[:title] || title || File.basename(safe_path, '.*')).to_s
+      performer = (extra_params[:performer] || performer || '').to_s
+      
+      thumb_safe_path = nil
+      if thumb && (thumb_path = file_manager.extract_local_path(thumb) || thumb) && File.exist?(thumb_path.to_s)
+        thumb_safe_path = file_manager.copy_to_safe_location(thumb_path.to_s)
+      end
+      thumbnail = create_input_thumbnail(thumb_safe_path) if thumb_safe_path
       
       content = TD::Types::InputMessageContent::Audio.new(
         audio: TD::Types::InputFile::Local.new(path: safe_path),
         album_cover_thumbnail: thumbnail,
         duration: duration,
-        title: title || File.basename(safe_path, '.*'),
-        performer: performer || '',
+        title: title,
+        performer: performer,
         caption: parse_markdown_text(caption.to_s)
       )
       
-      # Build reply_to structure if message_id provided
       reply_to_param = reply_to ? TD::Types::InputMessageReplyTo::Message.new(message_id: reply_to) : nil
-      
       dlog "[TD_SEND_AUDIO] chat=#{chat_id} path=#{safe_path} thumb=#{thumbnail ? 'yes' : 'no'} reply_to=#{reply_to}"
       
-      sent = client.send_message(
-        chat_id: chat_id,
-        message_thread_id: 0,
-        reply_to: reply_to_param,
-        options: nil,
-        reply_markup: nil,
-        input_message_content: content
-      ).value(60)
-      
-      sent
+      sent = client.send_message(chat_id: chat_id, message_thread_id: 0, reply_to: reply_to_param, options: nil, reply_markup: nil, input_message_content: content).value(60)
+      { message_id: sent&.id || 0, text: caption }
+    rescue => e
+      dlog "[TD_SEND_AUDIO_ERROR] #{e.class}: #{e.message}"
+      { message_id: 0, text: caption }
     end
     
     # Extract local file path from various input types

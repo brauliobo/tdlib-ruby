@@ -87,6 +87,11 @@ module TD
     def extract_local_path(obj)
       return obj if obj.is_a?(String)
       return obj.path if obj.respond_to?(:path)
+      # Handle TD::Types::Thumbnail -> download to temp dir
+      if obj.is_a?(TD::Types::Thumbnail) && obj.respond_to?(:file_id)
+        res = download_file(obj.file_id)
+        return res[:local_path] if res.is_a?(Hash) && res[:local_path]
+      end
       
       begin
         io = obj.instance_variable_get(:@io)
