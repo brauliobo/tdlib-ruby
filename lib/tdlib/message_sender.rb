@@ -24,7 +24,7 @@ module TD
       )
       
       # Build reply_to structure if message_id provided
-      reply_to_param = reply_to ? TD::Types::InputMessageReplyTo::Message.new(message_id: reply_to) : nil
+      reply_to_param = reply_to ? TD::Types::InputMessageReplyTo::Message.new(message_id: reply_to, quote: nil) : nil
       
       dlog "[TD_SEND_TEXT] chat=#{chat_id} text=#{text[0,50]}... reply_to=#{reply_to}"
       
@@ -94,7 +94,7 @@ module TD
       )
       
       # Build reply_to structure if message_id provided
-      reply_to_param = reply_to ? TD::Types::InputMessageReplyTo::Message.new(message_id: reply_to) : nil
+      reply_to_param = reply_to ? TD::Types::InputMessageReplyTo::Message.new(message_id: reply_to, quote: nil) : nil
       
       dlog "[TD_SEND_VIDEO] chat=#{chat_id} path=#{safe_path} thumb=#{thumbnail ? 'yes' : 'auto'} reply_to=#{reply_to}"
       
@@ -128,7 +128,7 @@ module TD
       )
       
       # Build reply_to structure if message_id provided
-      reply_to_param = reply_to ? TD::Types::InputMessageReplyTo::Message.new(message_id: reply_to) : nil
+      reply_to_param = reply_to ? TD::Types::InputMessageReplyTo::Message.new(message_id: reply_to, quote: nil) : nil
       
       dlog "[TD_SEND_DOC] chat=#{chat_id} path=#{safe_path} reply_to=#{reply_to}"
       
@@ -292,7 +292,7 @@ module TD
         caption: parse_markdown_text(caption.to_s)
       )
       
-      reply_to_param = reply_to ? TD::Types::InputMessageReplyTo::Message.new(message_id: reply_to) : nil
+      reply_to_param = reply_to ? TD::Types::InputMessageReplyTo::Message.new(message_id: reply_to, quote: nil) : nil
       dlog "[TD_SEND_AUDIO] chat=#{chat_id} path=#{safe_path} thumb=#{thumbnail ? 'yes' : 'no'} reply_to=#{reply_to}"
       
       sent = client.send_message(chat_id: chat_id, message_thread_id: 0, reply_to: reply_to_param, options: nil, reply_markup: nil, input_message_content: content).value(60)
