@@ -79,19 +79,25 @@ module TD
       # Pass 0x0 per TDLib recommendation; non-matching dims can cause ignore
       thumbnail = create_input_thumbnail(thumb_safe_path, width: 0, height: 0) || file_manager.create_dummy_thumbnail
       
-      content = TD::Types::InputMessageContent::Video.new(
-        video: TD::Types::InputFile::Local.new(path: safe_path),
-        thumbnail: thumbnail,
-        added_sticker_file_ids: [],
-        duration: duration,
-        width: width,
-        height: height,
-        supports_streaming: supports_streaming,
-        caption: parse_markdown_text(caption.to_s),
-        show_caption_above_media: false,
-        self_destruct_type: nil,
-        has_spoiler: false
-      )
+      content = {
+        '@type'                    => 'inputMessageVideo',
+        'video'                    => {
+          '@type'                  => 'inputVideo',
+          'video'                  => input_file_local(safe_path),
+          'thumbnail'              => input_thumbnail_hash(thumbnail),
+          'cover'                  => nil,
+          'start_timestamp'        => 0,
+          'added_sticker_file_ids' => [],
+          'duration'               => duration,
+          'width'                  => width,
+          'height'                 => height,
+          'supports_streaming'     => supports_streaming
+        }.compact,
+        'caption'                  => td_payload(parse_markdown_text(caption.to_s)),
+        'show_caption_above_media' => false,
+        'self_destruct_type'       => nil,
+        'has_spoiler'              => false
+      }.compact
       
       # Build reply_to structure if message_id provided
       reply_to_param = reply_to ? TD::Types::InputMessageReplyTo::Message.new(message_id: reply_to, quote: nil) : nil
@@ -120,12 +126,16 @@ module TD
       # Copy file to safe location to prevent cleanup issues
       safe_path = file_manager.copy_to_safe_location(path)
       
-      content = TD::Types::InputMessageContent::Document.new(
-        document: TD::Types::InputFile::Local.new(path: safe_path),
-        thumbnail: file_manager.create_dummy_thumbnail,
-        disable_content_type_detection: false,
-        caption: parse_markdown_text(caption.to_s)
-      )
+      content = {
+        '@type'    => 'inputMessageDocument',
+        'document' => {
+          '@type'                          => 'inputDocument',
+          'document'                       => input_file_local(safe_path),
+          'thumbnail'                      => nil,
+          'disable_content_type_detection' => false
+        }.compact,
+        'caption'  => td_payload(parse_markdown_text(caption.to_s))
+      }
       
       # Build reply_to structure if message_id provided
       reply_to_param = reply_to ? TD::Types::InputMessageReplyTo::Message.new(message_id: reply_to, quote: nil) : nil
@@ -283,14 +293,18 @@ module TD
       end
       thumbnail = create_input_thumbnail(thumb_safe_path) if thumb_safe_path
       
-      content = TD::Types::InputMessageContent::Audio.new(
-        audio: TD::Types::InputFile::Local.new(path: safe_path),
-        album_cover_thumbnail: thumbnail,
-        duration: duration,
-        title: title,
-        performer: performer,
-        caption: parse_markdown_text(caption.to_s)
-      )
+      content = {
+        '@type'   => 'inputMessageAudio',
+        'audio'   => {
+          '@type'                 => 'inputAudio',
+          'audio'                 => input_file_local(safe_path),
+          'album_cover_thumbnail' => input_thumbnail_hash(thumbnail),
+          'duration'              => duration,
+          'title'                 => title,
+          'performer'             => performer
+        }.compact,
+        'caption' => td_payload(parse_markdown_text(caption.to_s))
+      }
       
       reply_to_param = reply_to ? TD::Types::InputMessageReplyTo::Message.new(message_id: reply_to, quote: nil) : nil
       dlog "[TD_SEND_AUDIO] chat=#{chat_id} path=#{safe_path} thumb=#{thumbnail ? 'yes' : 'no'} reply_to=#{reply_to}"
@@ -320,6 +334,33 @@ module TD
         else
           input.to_s if input
         end
+      end
+    end
+
+    def input_file_local(path)
+      { '@type' => 'inputFileLocal', 'path' => path.to_s }
+    end
+
+    def input_thumbnail_hash(thumbnail)
+      return unless thumbnail
+
+      payload = td_payload(thumbnail)
+      payload.empty? ? nil : payload
+    end
+
+    def td_payload(value)
+      case value
+      when TD::Types::Base
+        td_payload(value.to_h)
+      when Hash
+        value.each_with_object({}) do |(key, val), obj|
+          payload = td_payload(val)
+          obj[key.to_s] = payload unless payload.nil?
+        end
+      when Array
+        value.map { |item| td_payload(item) }
+      else
+        value
       end
     end
     
