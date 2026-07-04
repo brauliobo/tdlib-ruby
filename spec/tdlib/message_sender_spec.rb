@@ -1,4 +1,6 @@
 require 'spec_helper'
+require 'fileutils'
+require 'tmpdir'
 
 RSpec.describe TD::MessageSender do
   let(:mock_client) { double('TD::Client') }
@@ -217,6 +219,83 @@ RSpec.describe TD::MessageSender do
       expect(mock_client).to have_received(:send_message) do |args|
         expect(args[:reply_to]).to be_nil
       end
+    end
+  end
+
+  describe '#send_photo' do
+    let(:dir) { Dir.mktmpdir('td-photo-') }
+    let(:photo_path) { File.join(dir, 'photo.jpg') }
+    let(:mock_result) { double('message', id: message_id) }
+    let(:mock_send_result) { double('send_result', value: mock_result) }
+
+    before do
+      File.write(photo_path, '')
+      allow(mock_client).to receive(:send_message).and_return(mock_send_result)
+      allow(message_sender.file_manager).to receive(:copy_to_safe_location).and_return(photo_path)
+      allow(message_sender).to receive(:parse_markdown_text) do |text, _mode = 'MarkdownV2'|
+        TD::Types::FormattedText.new(text: text, entities: [])
+      end
+    end
+
+    after { FileUtils.remove_entry(dir) if Dir.exist?(dir) }
+
+    it 'sends photos using the raw inputPhoto payload accepted by TDLib' do
+      result = message_sender.send_photo(chat_id, 'Photo caption', photo: photo_path)
+
+      expect(result).to eq(message_id: message_id, text: 'Photo caption')
+      expect(mock_client).to have_received(:send_message) do |args|
+        content = args[:input_message_content]
+        expect(content).to include('@type' => 'inputMessagePhoto')
+        expect(content['photo']).to eq('@type' => 'inputPhoto', 'photo' => { '@type' => 'inputFileLocal', 'path' => photo_path })
+        expect(content['caption']['text']).to eq('Photo caption')
+      end
+    end
+  end
+
+  describe '#send_media_album' do
+    let(:dir) { Dir.mktmpdir('td-album-') }
+    let(:photo_path) { File.join(dir, 'photo.jpg') }
+    let(:video_path) { File.join(dir, 'video.mp4') }
+    let(:messages) { [double('message', id: 1), double('message', id: 2)] }
+    let(:mock_result) { double('messages', messages: messages) }
+    let(:mock_send_result) { double('send_result') }
+
+    before do
+      File.write(photo_path, '')
+      File.write(video_path, '')
+      allow(mock_client).to receive(:send_message_album).and_return(mock_send_result)
+      allow(mock_send_result).to receive(:value!).and_return(mock_result)
+      allow(message_sender.file_manager).to receive(:copy_to_safe_location) { |path| path }
+      allow(message_sender).to receive(:parse_markdown_text) do |text, _mode = 'MarkdownV2'|
+        TD::Types::FormattedText.new(text: text, entities: [])
+      end
+    end
+
+    after { FileUtils.remove_entry(dir) if Dir.exist?(dir) }
+
+    it 'builds album contents and captions only the first media item' do
+      result = message_sender.send_media_album(
+        chat_id,
+        [{ path: photo_path, mime: 'image/jpeg' }, { path: video_path, mime: 'video/mp4' }],
+        caption: 'Album caption'
+      )
+
+      expect(result).to eq(messages)
+      expect(mock_client).to have_received(:send_message_album) do |args|
+        contents = args[:input_message_contents]
+        expect(contents.map { |content| content['@type'] }).to eq(%w[inputMessagePhoto inputMessageVideo])
+        expect(contents[0]['caption']['text']).to eq('Album caption')
+        expect(contents[1]['caption']['text']).to eq('')
+      end
+    end
+
+    it 'builds compact TDLib photo album content with a local input file' do
+      content = message_sender.media_album_content({ path: photo_path, mime: 'image/jpeg' }, 'caption')
+
+      expect(content).to include('@type' => 'inputMessagePhoto')
+      expect(content['photo']).to eq('@type' => 'inputPhoto', 'photo' => { '@type' => 'inputFileLocal', 'path' => photo_path })
+      expect(content).not_to have_key('thumbnail')
+      expect(content).not_to have_key('self_destruct_type')
     end
   end
 

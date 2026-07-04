@@ -156,6 +156,62 @@ module TD
       dlog "[TD_SEND_DOC_ERROR] #{e.class}: #{e.message}"
       { message_id: 0, text: caption }
     end
+
+    def send_photo(chat_id, caption, photo:, parse_mode: 'MarkdownV2', reply_to: nil, timeout: 60)
+      path              = safe_local_path!(photo, 'photo')
+      formatted_caption = td_payload(parse_markdown_text(caption.to_s, parse_mode))
+      content           = td_payload(photo_album_content(path, formatted_caption))
+
+      reply_to_param = reply_to ? TD::Types::InputMessageReplyTo::Message.new(message_id: reply_to, quote: nil) : nil
+      dlog "[TD_SEND_PHOTO] chat=#{chat_id} path=#{path} reply_to=#{reply_to}"
+
+      sent = client.send_message(
+        chat_id: chat_id,
+        message_thread_id: 0,
+        reply_to: reply_to_param,
+        options: nil,
+        reply_markup: nil,
+        input_message_content: content
+      ).value(timeout)
+
+      { message_id: sent&.id || 0, text: caption }
+    rescue => e
+      dlog "[TD_SEND_PHOTO_ERROR] #{e.class}: #{e.message}"
+      { message_id: 0, text: caption }
+    end
+
+    def send_media_album(chat_id, media, caption: nil, parse_mode: 'MarkdownV2', reply_to: nil, timeout: 1_800)
+      contents = media.map.with_index { |item, i| media_album_content(item, i.zero? ? caption : nil, parse_mode: parse_mode) }
+      reply_to_param = reply_to ? TD::Types::InputMessageReplyTo::Message.new(message_id: reply_to, quote: nil) : nil
+
+      dlog "[TD_SEND_ALBUM] chat=#{chat_id} items=#{contents.size} reply_to=#{reply_to}"
+
+      result = client.send_message_album(
+        chat_id: chat_id,
+        message_thread_id: 0,
+        reply_to: reply_to_param,
+        options: nil,
+        input_message_contents: contents
+      ).value!(timeout)
+
+      Array(result&.messages || result)
+    end
+
+    def media_album_content(media, caption = nil, parse_mode: 'MarkdownV2')
+      path    = safe_local_path!(media, 'album file')
+      caption = td_payload(parse_markdown_text(caption.to_s, parse_mode))
+      mime    = media_value(media, :mime) || media_value(media, :mime_type) || media_value(media, :content_type)
+
+      td_payload(
+        if mime.to_s.start_with?('video/')
+          video_album_content(path, caption)
+        elsif mime.to_s.start_with?('application/')
+          document_album_content(path, caption)
+        else
+          photo_album_content(path, caption)
+        end
+      )
+    end
     
     def edit_message(chat_id, message_id, text, parse_mode: 'MarkdownV2')
       # Use the correct message ID from mapping if available
@@ -339,6 +395,60 @@ module TD
 
     def input_file_local(path)
       { '@type' => 'inputFileLocal', 'path' => path.to_s }
+    end
+
+    def safe_local_path!(input, label)
+      source = extract_local_path(input) || media_value(input, :path) || media_value(input, :fn_out) || media_value(input, :file)
+      raise ArgumentError, "#{label} path missing" if source.to_s.empty?
+      raise ArgumentError, "#{label} does not exist: #{source}" unless File.exist?(source.to_s)
+
+      file_manager.copy_to_safe_location(source.to_s)
+    end
+
+    def media_value(media, key)
+      if media.is_a?(Hash)
+        media[key] || media[key.to_s]
+      elsif media.respond_to?(key)
+        media.public_send(key)
+      end
+    end
+
+    def photo_album_content(path, caption)
+      media_album_payload('inputMessagePhoto', 'photo', input_photo_local(path), caption)
+    end
+
+    def video_album_content(path, caption)
+      media_album_payload(
+        'inputMessageVideo', 'video', input_file_local(path), caption,
+        'duration' => 0, 'supports_streaming' => true
+      )
+    end
+
+    def document_album_content(path, caption)
+      {
+        '@type'    => 'inputMessageDocument',
+        'document' => input_file_local(path),
+        'caption'  => caption
+      }
+    end
+
+    def media_album_payload(type, media_key, media, caption, extra = {})
+      {
+        '@type'                    => type,
+        media_key                  => media,
+        'thumbnail'                => nil,
+        'added_sticker_file_ids'   => [],
+        'width'                    => 0,
+        'height'                   => 0,
+        'caption'                  => caption,
+        'show_caption_above_media' => false,
+        'self_destruct_type'       => nil,
+        'has_spoiler'              => false
+      }.merge(extra)
+    end
+
+    def input_photo_local(path)
+      { '@type' => 'inputPhoto', 'photo' => input_file_local(path) }
     end
 
     def input_thumbnail_hash(thumbnail)
