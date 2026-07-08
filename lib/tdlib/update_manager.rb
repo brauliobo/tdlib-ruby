@@ -28,6 +28,7 @@ class TD::UpdateManager
     update = TD::Api.client_receive(@td_client, TIMEOUT)
 
     unless update.nil?
+      raw_update = update.dup
       extra  = update.delete('@extra')
       update = TD::Types.wrap(update)
       callback&.call(update)
@@ -36,11 +37,24 @@ class TD::UpdateManager
     end
   rescue StandardError => e
     msg = e.message.to_s
-    return if msg.include?("Can't find class for") ||
-              msg.include?("uninitialized constant TD::Types::Update") ||
-              msg.include?("is missing in Hash input") ||
-              msg.include?("Dry::Types::Constrained")
+    if msg.include?("Can't find class for") ||
+       msg.include?("uninitialized constant TD::Types::Update") ||
+       msg.include?("is missing in Hash input") ||
+       msg.include?("Dry::Types::Constrained")
+      warn("TDLib update wrap failed: #{e.class}: #{e.message}; #{raw_update_summary(raw_update)}") if ENV['TDLOG'].to_i > 0
+      return
+    end
     warn("Uncaught exception in update manager: #{e.message}")
+  end
+
+  def raw_update_summary(raw_update)
+    return 'raw=nil' unless raw_update.is_a?(Hash)
+
+    message = raw_update['message'] || raw_update['last_message']
+    parts   = ["type=#{raw_update['@type']}"]
+    parts << "chat=#{raw_update['chat_id'] || message&.[]('chat_id')}"
+    parts << "message=#{message&.[]('id')}"
+    parts.compact.join(' ')
   end
 
   def match_handlers!(update, extra)
