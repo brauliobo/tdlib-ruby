@@ -12,6 +12,8 @@ module TD
       @known_chat_ids = Set.new
       @message_id_map = {}
       @pending_last_messages = []
+      @processed_message_keys = Set.new
+      @processed_message_keys_mutex = Mutex.new
     end
     
     def setup_handlers(&message_handler)
@@ -190,6 +192,7 @@ module TD
     
     def handle_incoming_message(orig_msg)
       return unless should_process_message?(orig_msg)
+      return unless claim_message(orig_msg)
       
       dlog "[MSG] incoming id=#{orig_msg.id} chat=#{orig_msg.chat_id} type=#{orig_msg.content.class.name.split('::').last}"
       
@@ -225,6 +228,7 @@ module TD
             
             text = extract_message_text(orig_msg)
             next if text.nil? || text.empty?
+            next unless claim_message(orig_msg)
             
             msg = create_message_object(orig_msg)
             puts "[UNREAD_MSG] chat=#{orig_msg.chat_id} id=#{orig_msg.id} #{text[0,80]}"
@@ -284,6 +288,7 @@ module TD
             
             text = extract_message_text(orig_msg)
             next if text.nil? || text.empty?
+            next unless claim_message(orig_msg)
             
             msg = create_message_object(orig_msg)
             puts "[UNREAD_MSG] chat=#{orig_msg.chat_id} id=#{orig_msg.id} #{text[0,80]}"
@@ -304,6 +309,17 @@ module TD
       end
       
       processed
+    end
+
+    def claim_message(message)
+      key = [message.chat_id, message.id]
+      @processed_message_keys_mutex.synchronize do
+        return false if @processed_message_keys.include?(key)
+
+        @processed_message_keys << key
+        @processed_message_keys.delete(@processed_message_keys.first) while @processed_message_keys.size > 1000
+      end
+      true
     end
   end
 end
