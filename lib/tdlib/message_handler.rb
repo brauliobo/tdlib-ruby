@@ -66,13 +66,14 @@ module TD
     def create_message_object(orig_msg)
       text = extract_message_text(orig_msg)
       
-      msg = orig_msg.to_h.merge(
+      msg = {
         chat_id: orig_msg.chat_id,
         chat: { id: orig_msg.chat_id },
         from: { id: (orig_msg.sender_id.respond_to?(:user_id) ? orig_msg.sender_id.user_id : nil) },
         text: text,
-        id: orig_msg.id
-      )
+        id: orig_msg.id,
+        is_outgoing: orig_msg.respond_to?(:is_outgoing) && orig_msg.is_outgoing
+      }
       
       # Add media attachments
       case orig_msg.content

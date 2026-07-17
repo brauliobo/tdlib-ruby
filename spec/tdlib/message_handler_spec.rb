@@ -41,4 +41,20 @@ RSpec.describe TD::MessageHandler do
     expect(handled.size).to eq(1)
     expect(client).to have_received(:view_messages).once
   end
+
+  it 'builds a shallow message without converting the TDLib object graph' do
+    allow(handler).to receive(:create_message_object).and_call_original
+    expect(message).not_to receive(:to_h)
+
+    result = handler.send(:create_message_object, message)
+
+    expect(result).to include(
+      chat_id: 123,
+      chat: { id: 123 },
+      from: { id: 789 },
+      id: 456,
+      text: nil,
+      is_outgoing: false
+    )
+  end
 end

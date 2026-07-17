@@ -186,15 +186,9 @@ class TD::Client
   end
 
   def wait_for_ready(timeout: 600)
-    timeout.times do |i|
-      auth_state = get_authorization_state.value.authorization_state rescue nil
-      dlog "[AUTH_WAIT] poll #{i}: state=#{auth_state&.class&.name&.split('::')&.last}" if i % 50 == 0
-      break if auth_state.is_a?(TD::Types::AuthorizationState::Ready)
-      sleep 0.2
-    end
-    
-    auth_state = get_authorization_state.value.authorization_state rescue nil
-    auth_state.is_a?(TD::Types::AuthorizationState::Ready)
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
+    sleep 0.2 until ready? || Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
+    ready?
   end
   
   def get_self_id
