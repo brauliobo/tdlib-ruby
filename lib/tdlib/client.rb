@@ -7,6 +7,7 @@ class TD::Client
   include Concurrent
   include TD::ClientMethods
   include TD::Logging
+  include TD::PublicChatResolver
 
   TIMEOUT = 20
   

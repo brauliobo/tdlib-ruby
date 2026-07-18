@@ -35,6 +35,7 @@ end
 require 'tdlib-schema'
 require 'tdlib/errors'
 require 'tdlib/api'
+require 'tdlib/public_chat_resolver'
 require 'tdlib/client'
 require 'tdlib/update_handler'
 require 'tdlib/update_manager'
