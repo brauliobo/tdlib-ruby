@@ -64,6 +64,34 @@ RSpec.describe TD::MessageSender do
         expect(message_sender).to have_received(:parse_markdown_text).with(test_text, 'HTML')
       end
     end
+
+    context 'with native reply markup' do
+      let(:reply_markup) { double('reply_markup') }
+
+      before do
+        allow(message_sender).to receive(:parse_markdown_text).and_return(
+          TD::Types::FormattedText.new(text: test_text, entities: [])
+        )
+        allow(TD::Types::InputMessageContent::Text).to receive(:new).and_return(double('input_message_content'))
+        allow(mock_send_result).to receive(:value).with(15).and_return(mock_result)
+      end
+
+      it 'passes provided reply markup to the client' do
+        message_sender.send_text(chat_id, test_text, reply_markup: reply_markup)
+
+        expect(mock_client).to have_received(:send_message) do |args|
+          expect(args[:reply_markup]).to be(reply_markup)
+        end
+      end
+
+      it 'defaults reply markup to nil' do
+        message_sender.send_text(chat_id, test_text)
+
+        expect(mock_client).to have_received(:send_message) do |args|
+          expect(args[:reply_markup]).to be_nil
+        end
+      end
+    end
   end
 
   describe '#edit_message' do
@@ -100,6 +128,34 @@ RSpec.describe TD::MessageSender do
       result = message_sender.edit_message(chat_id, message_id, test_text)
       
       expect(result).to be_nil
+    end
+
+    context 'with native reply markup' do
+      let(:reply_markup) { double('reply_markup') }
+
+      before do
+        allow(message_sender).to receive(:parse_markdown_text).and_return(
+          TD::Types::FormattedText.new(text: test_text, entities: [])
+        )
+        allow(TD::Types::InputMessageContent::Text).to receive(:new).and_return(double('input_message_content'))
+        allow(mock_edit_result).to receive(:value).with(15).and_return(mock_result)
+      end
+
+      it 'passes provided reply markup to the client' do
+        message_sender.edit_message(chat_id, message_id, test_text, reply_markup: reply_markup)
+
+        expect(mock_client).to have_received(:edit_message_text) do |args|
+          expect(args[:reply_markup]).to be(reply_markup)
+        end
+      end
+
+      it 'defaults reply markup to nil' do
+        message_sender.edit_message(chat_id, message_id, test_text)
+
+        expect(mock_client).to have_received(:edit_message_text) do |args|
+          expect(args[:reply_markup]).to be_nil
+        end
+      end
     end
   end
 

@@ -14,7 +14,7 @@ module TD
       setup_message_tracking
     end
     
-    def send_text(chat_id, text, parse_mode: 'MarkdownV2', reply_to: nil)
+    def send_text(chat_id, text, parse_mode: 'MarkdownV2', reply_to: nil, reply_markup: nil)
       formatted_text = parse_markdown_text(text.to_s, parse_mode)
       
       content = TD::Types::InputMessageContent::Text.new(
@@ -33,7 +33,7 @@ module TD
         message_thread_id: 0,
         reply_to: reply_to_param,
         options: nil,
-        reply_markup: nil,
+        reply_markup: reply_markup,
         input_message_content: content
       ).value(15)
       
@@ -213,32 +213,6 @@ module TD
       )
     end
     
-    def edit_message(chat_id, message_id, text, parse_mode: 'MarkdownV2')
-      # Use the correct message ID from mapping if available
-      actual_id = @message_id_map[message_id] || message_id
-      
-      dlog "[TD_EDIT] chat=#{chat_id} id=#{message_id}->#{actual_id} text=#{text.to_s[0,50]}..."
-      return if actual_id.to_i <= 0 || text.to_s.empty?
-      
-      # Parse markdown to get proper formatting entities
-      formatted_text = parse_markdown_text(text.to_s, parse_mode)
-      
-      client.edit_message_text(
-        chat_id: chat_id,
-        message_id: actual_id,
-        input_message_content: TD::Types::InputMessageContent::Text.new(
-          text: formatted_text,
-          link_preview_options: nil,
-          clear_draft: false
-        ),
-        reply_markup: nil
-      ).value(15)
-      
-      dlog "[TD_EDIT] success"
-    rescue => e
-      dlog "[TD_EDIT_ERROR] #{e.class}: #{e.message}"
-    end
-    
     def delete_message(chat_id, message_id)
       client.delete_messages(chat_id: chat_id, message_ids: [message_id], revoke: true)
       dlog "[TD_DELETE] chat=#{chat_id} id=#{message_id}"
@@ -247,7 +221,7 @@ module TD
     end
     
     # Edit message text
-    def edit_message(chat_id, message_id, text, parse_mode: 'MarkdownV2')
+    def edit_message(chat_id, message_id, text, parse_mode: 'MarkdownV2', reply_markup: nil)
       # Check if message ID has been updated
       actual_message_id = @message_id_map[message_id] || message_id
       
@@ -258,7 +232,7 @@ module TD
       result = client.edit_message_text(
         chat_id: chat_id,
         message_id: actual_message_id,
-        reply_markup: nil,
+        reply_markup: reply_markup,
         input_message_content: TD::Types::InputMessageContent::Text.new(
           text: formatted_text,
           link_preview_options: nil,
