@@ -30,7 +30,7 @@ module TD
       
       sent = client.send_message(
         chat_id: chat_id,
-        message_thread_id: 0,
+        topic_id: nil,
         reply_to: reply_to_param,
         options: nil,
         reply_markup: reply_markup,
@@ -106,7 +106,7 @@ module TD
       
       sent = client.send_message(
         chat_id: chat_id,
-        message_thread_id: 0,
+        topic_id: nil,
         reply_to: reply_to_param,
         options: nil,
         reply_markup: nil,
@@ -144,7 +144,7 @@ module TD
       
       sent = client.send_message(
         chat_id: chat_id,
-        message_thread_id: 0,
+        topic_id: nil,
         reply_to: reply_to_param,
         options: nil,
         reply_markup: nil,
@@ -167,7 +167,7 @@ module TD
 
       sent = client.send_message(
         chat_id: chat_id,
-        message_thread_id: 0,
+        topic_id: nil,
         reply_to: reply_to_param,
         options: nil,
         reply_markup: nil,
@@ -188,7 +188,7 @@ module TD
 
       result = client.send_message_album(
         chat_id: chat_id,
-        message_thread_id: 0,
+        topic_id: nil,
         reply_to: reply_to_param,
         options: nil,
         input_message_contents: contents
@@ -339,7 +339,7 @@ module TD
       reply_to_param = reply_to ? TD::Types::InputMessageReplyTo::Message.new(message_id: reply_to, quote: nil) : nil
       dlog "[TD_SEND_AUDIO] chat=#{chat_id} path=#{safe_path} thumb=#{thumbnail ? 'yes' : 'no'} reply_to=#{reply_to}"
       
-      sent = client.send_message(chat_id: chat_id, message_thread_id: 0, reply_to: reply_to_param, options: nil, reply_markup: nil, input_message_content: content).value(60)
+      sent = client.send_message(chat_id: chat_id, topic_id: nil, reply_to: reply_to_param, options: nil, reply_markup: nil, input_message_content: content).value(60)
       { message_id: sent&.id || 0, text: caption }
     rescue => e
       dlog "[TD_SEND_AUDIO_ERROR] #{e.class}: #{e.message}"

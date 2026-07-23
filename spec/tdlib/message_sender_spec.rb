@@ -80,6 +80,7 @@ RSpec.describe TD::MessageSender do
         message_sender.send_text(chat_id, test_text, reply_markup: reply_markup)
 
         expect(mock_client).to have_received(:send_message) do |args|
+          expect(args[:topic_id]).to be_nil
           expect(args[:reply_markup]).to be(reply_markup)
         end
       end
@@ -338,6 +339,7 @@ RSpec.describe TD::MessageSender do
 
       expect(result).to eq(messages)
       expect(mock_client).to have_received(:send_message_album) do |args|
+        expect(args[:topic_id]).to be_nil
         contents = args[:input_message_contents]
         expect(contents.map { |content| content['@type'] }).to eq(%w[inputMessagePhoto inputMessageVideo])
         expect(contents[0]['caption']['text']).to eq('Album caption')

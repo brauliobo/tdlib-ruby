@@ -274,8 +274,7 @@ module TD
             offset: 0,
             limit: 30,
             filter: nil,
-            message_thread_id: 0,
-            saved_messages_topic_id: 0
+            topic_id: nil
           ).value(10)
           
           msgs = found&.messages || []
