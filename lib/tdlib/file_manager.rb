@@ -64,15 +64,10 @@ module TD
     def copy_to_safe_location(original_path)
       return original_path unless File.exist?(original_path)
       
-      # Create safe upload directory
-      safe_dir = File.join(Dir.tmpdir, 'tdbot-uploads')
+      # Keep the original basename, since Telegram names the upload after it
+      safe_dir = File.join(Dir.tmpdir, 'tdbot-uploads', Time.now.to_f.to_s.tr('.', ''))
       FileUtils.mkdir_p(safe_dir)
-      
-      # Generate unique filename
-      basename = File.basename(original_path)
-      timestamp = Time.now.to_f.to_s.tr('.', '')
-      safe_filename = "#{timestamp}_#{basename}"
-      safe_path = File.join(safe_dir, safe_filename)
+      safe_path = File.join(safe_dir, File.basename(original_path))
       
       # Copy file
       FileUtils.cp(original_path, safe_path)
@@ -167,7 +162,7 @@ module TD
     def schedule_cleanup(safe_path)
       Thread.new do
         sleep 300  # 5 minutes
-        File.delete(safe_path) if File.exist?(safe_path)
+        FileUtils.rm_rf(File.dirname(safe_path))
         dlog "[SAFE_CLEANUP] deleted #{safe_path}"
       rescue => e
         dlog "[SAFE_CLEANUP_ERROR] #{e.class}: #{e.message}"
