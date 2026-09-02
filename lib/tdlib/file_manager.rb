@@ -1,5 +1,6 @@
 require_relative 'logging'
 require 'fileutils'
+require 'tmpdir'
 
 module TD
   class FileManager
@@ -65,9 +66,9 @@ module TD
       return original_path unless File.exist?(original_path)
       
       # Keep the original basename, since Telegram names the upload after it
-      safe_dir = File.join(Dir.tmpdir, 'tdbot-uploads', Time.now.to_f.to_s.tr('.', ''))
-      FileUtils.mkdir_p(safe_dir)
-      safe_path = File.join(safe_dir, File.basename(original_path))
+      uploads_dir = File.join(Dir.tmpdir, 'tdbot-uploads')
+      FileUtils.mkdir_p(uploads_dir)
+      safe_path = File.join(Dir.mktmpdir(nil, uploads_dir), File.basename(original_path))
       
       # Copy file
       FileUtils.cp(original_path, safe_path)
